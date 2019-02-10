@@ -1,5 +1,8 @@
 # Cafre
-Local network game server
+Local network game server.
+## Features
+- Game logic is protected in the game server.
+- 60 fps.
 ## Getting Started
 ### Dependencies
 node, npm and Google Chrome
