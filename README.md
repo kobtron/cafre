@@ -1,12 +1,12 @@
 # Cafre
 Local network game server
 ## Getting Started
-###Dependencies
+##Dependencies
 node, npm and Google Chrome
-###Starting the server
+##Starting the server
 npm install
 node .
-###Starting the client
+##Starting the client
 Browse http://localhost:3000/
 ##Example files (meant to be changed)
 game.js - logic
