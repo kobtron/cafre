@@ -1,0 +1,174 @@
+<html>
+   <head>
+      <title>Cafre Client</title>
+   </head>
+   <body>
+      <canvas id="myCanvas" width="400" height="400" style="border: 1px solid black;"></canvas>
+      <span id="l"></span>
+      <script>
+window.onload = function() {
+   var domain = "localhost";
+   var port = "3000";
+   var dAndP = domain + ":" + port;
+   var server = 'ws://' + dAndP;
+   var cServer = "http://" + dAndP;
+   var textures = {};
+   var samples = {};
+   var music = {};
+   var c = document.getElementById("myCanvas");
+   var ctx = c.getContext("2d");
+   ctx.fillText("Press SPACE to connect.", 16, 16);
+
+   function process(r) {
+      if (Array.isArray(r)) {
+         for (var i = 0; i < r.length; ++i) {
+            var inst = r[i];
+            if (typeof inst === "string") {
+               if (inst == "clear") {
+                  ctx.clearRect(0, 0, c.width, c.height);
+               }
+            } else if (Array.isArray(inst)) {
+               var name = inst[0];
+               var src = inst[1];
+               var img = document.createElement("img");
+               img.setAttribute("src", cServer + "/" + src);
+               textures[name] = img;
+            } else if (typeof inst === "object") {
+               for (var p in inst) {
+                  if (inst.hasOwnProperty(p)) {
+                     var args = inst[p];
+                     if (p == "tex") {
+                        var name = args[0];
+                        var src = args[1];
+                        var img = document.createElement("img");
+                        img.setAttribute("src", cServer + "/" + src);
+                        textures[name] = img;
+                     } else if (p == "text") {
+                        var txt = args[0];
+                        var x = args[1];
+                        var y = args[2];
+                        var font = args[3];
+                        if (font) {
+                           ctx.font = font;
+                        }
+                        ctx.fillText(txt, x, y);
+                     } else if (p == "draw") {
+                        var name = args[0];
+                        var x = args[1];
+                        var y = args[2];
+                        var t = textures[name];
+                        if (t && t.complete) {
+                           ctx.drawImage(t, x, y);
+                        }
+                     } else if (p == "smpl") {
+                        var name = args[0];
+                        var src = args[1];
+                        var smp = document.createElement("audio");
+                        smp.setAttribute("src", cServer + "/" + src);
+                        samples[name] = { smp: smp, canplay: false };
+                        (function(sample) {
+                           sample.smp.oncanplaythrough = function() {
+                              sample.canplay = true;
+                           };
+                        })(samples[name]);
+                     } else if (p == "play") {
+                        var name = args;
+                        var s = samples[name];
+                        if (s && s.canplay) {
+                           s.smp.play();
+                        }
+                     } else if (p == "mus") {
+                        var name = args[0];
+                        var src = args[1];
+                        var smp = document.createElement("audio");
+                        smp.loop = true;
+                        smp.setAttribute("src", cServer + "/" + src);
+                        music[name] = smp;
+                     } else if (p == "pmus") {
+                        var name = args;
+                        var s = music[name];
+                        if (s) {
+                           s.play();
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   var cTime;
+   var xhr;
+   var l = document.getElementById("l");
+   var start;
+   var startListener = function(e) {
+      if (e.keyCode == 32) {
+         document.removeEventListener("keydown", startListener);
+         start();
+      }
+      e.preventDefault();
+   };
+   
+   document.addEventListener("keydown", startListener);
+   
+   start = function() {
+      var events = [["load"]];
+      document.addEventListener('keydown', function(e) {
+         events.push(["keydown", e.keyCode]);
+         e.preventDefault();
+      });
+      document.addEventListener('keyup', function(e) {
+         events.push(["keyup", e.keyCode]);
+         e.preventDefault();
+      });
+
+      var connection = new WebSocket(server);
+      var frame;
+
+      connection.onmessage = function (message) {
+         var r = JSON.parse(message.data);
+         process(r);
+         var nTime = new Date().getTime();
+         var dTime = nTime - cTime;
+         var w = 1000 / 60;
+         w -= dTime;
+         if (w < 0) {
+            l.innerHTML = "!!!";
+            w = 0;
+         } else {
+            l.innerHTML = "";
+         }
+         cTime = nTime;
+         setTimeout(frame, w);
+      };
+
+      frame = function() {
+         connection.send(JSON.stringify(events));
+         events = [];
+      }
+
+      function waitForSocketConnection(socket, callback){
+       setTimeout(
+           function () {
+               if (socket.readyState === 1) {
+                   console.log("Connection is made")
+                   if(callback != null){
+                       cTime = new Date().getTime();
+                       callback();
+                   }
+                   return;
+
+               } else {
+                   console.log("wait for connection...")
+                   waitForSocketConnection(socket, callback);
+               }
+
+           }, 5);
+      }
+      waitForSocketConnection(connection, frame);
+   };
+};
+      </script>
+   </body>
+</html>
