@@ -5,7 +5,7 @@ Local network game server.
 - 60 fps.
 ## Getting Started
 ### Dependencies
-node, npm and Google Chrome
+Node.js, npm and Google Chrome
 ### Starting the server
 ```
 npm install
