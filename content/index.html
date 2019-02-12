@@ -3,7 +3,7 @@
       <title>Cafre Client</title>
    </head>
    <body>
-      <canvas id="myCanvas" width="400" height="400" style="border: 1px solid black;"></canvas>
+      <canvas id="myCanvas" width="512" height="512" style="border: 1px solid black;"></canvas>
       <span id="l"></span>
       <script>
 window.onload = function() {
@@ -54,12 +54,45 @@ window.onload = function() {
                         ctx.fillText(txt, x, y);
                      } else if (p == "draw") {
                         var name = args[0];
-                        var x = args[1];
-                        var y = args[2];
-                        var t = textures[name];
-                        if (t && t.complete) {
-                           ctx.drawImage(t, x, y);
+                        if (args.length == 3) {
+                           var x = args[1];
+                           var y = args[2];
+                           var t = textures[name];
+                           if (t && t.complete) {
+                              ctx.drawImage(t, x, y);
+                           }
+                        } else if (args.length == 5) {
+                           var x = args[1];
+                           var y = args[2];
+                           var w = args[3];
+                           var h = args[4];
+                           var t = textures[name];
+                           if (t && t.complete) {
+                              ctx.drawImage(t, x, y, w, h);
+                           }
+                        } else if (args.length == 9) {
+                           var sx = args[1];
+                           var sy = args[2];
+                           var sw = args[3];
+                           var sh = args[4];
+                           var x = args[5];
+                           var y = args[6];
+                           var w = args[7];
+                           var h = args[7];
+                           var t = textures[name];
+                           if (t && t.complete) {
+                              ctx.drawImage(t, sx, sy, sw, sh, x, y, w, h);
+                           }
                         }
+                     } else if (p == "sstyle") {
+                        var style = args;
+                        ctx.strokeStyle = style;
+                     } else if (p == "srect") {
+                        var x = args[0];
+                        var y = args[1];
+                        var w = args[2];
+                        var h = args[3];
+                        ctx.strokeRect(x, y, w, h);
                      } else if (p == "smpl") {
                         var name = args[0];
                         var src = args[1];
@@ -115,10 +148,12 @@ window.onload = function() {
    start = function() {
       var events = [["load"]];
       document.addEventListener('keydown', function(e) {
+         console.log(e.keyCode);
          events.push(["keydown", e.keyCode]);
          e.preventDefault();
       });
       document.addEventListener('keyup', function(e) {
+         console.log(e.keyCode);
          events.push(["keyup", e.keyCode]);
          e.preventDefault();
       });

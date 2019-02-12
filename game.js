@@ -8,6 +8,15 @@ var y = baseY;
 var tryJump = false;
 var isJumping = false;
 var g = 0;
+var cx = 0;
+var cy = 0;
+var cleft = false;
+var cright = false;
+var cup = false;
+var cdown = false;
+var print = false;
+var del = false;
+var map = {};
 
 exports.update = function(events) {
    for (var i = 0; i < events.length; ++i) {
@@ -19,10 +28,19 @@ exports.update = function(events) {
          var keyCode = e[1];
          if (keyCode == 65) {
             left = true;
+            cleft = true;
          } else if (keyCode == 68) {
+            cright = true;
             right = true;
+         } else if (keyCode == 87) {
+            cup = true;
+         } else if (keyCode == 83) {
+            cdown = true;
+         } else if (keyCode == 74) {
+            del = true;
          } else if (keyCode == 75) {
             tryJump = true;
+            print = true;
          }
          //console.log("d" + keyCode);
       } else if (inst == "keyup") {
@@ -36,6 +54,45 @@ exports.update = function(events) {
       }
    }
   
+  if (cleft) {
+     --cx;
+     if (cx < 0) {
+        cx = 0;
+     }
+     cleft = false;
+  }
+  if (cup) {
+     --cy;
+     if (cy < 0) {
+        cy = 0;
+     }
+     cup = false;
+  }
+  if (cright) {
+     ++cx;
+     if (cx > 15) {
+        cx = 15;
+     }
+     cright = false;
+  }
+  if (cdown) {
+     ++cy;
+     if (cy > 15) {
+        cy = 15;
+     }
+     cdown = false;
+  }
+  if (print) {
+     map[cx.toString() + "," + cy.toString()] = { x: cx * 32, y: cy * 32 };
+     print = false;
+  }
+  if (del) {
+     var k = cx.toString() + "," + cy.toString();
+     if (map.hasOwnProperty(k)) {
+        delete map[k];
+     }
+     del = false;
+  }
   if (left) {
      x -= 2;
   }
@@ -47,6 +104,7 @@ exports.update = function(events) {
   if (load) {
      instructions.push.apply(instructions, [
         { "tex": ["car", "car.png"] },
+        { "tex": ["ft", "fantasy-tileset.png"] },
         { "smpl": ["jump", "jump.ogg"] },
         { "mus": ["cafre", "cafre.mp3"] },
         { "pmus": "cafre" }
@@ -75,6 +133,22 @@ exports.update = function(events) {
      "clear",
      { "text": ["Move with A and D. Jump with K.", 8, 8] },
      { "draw": ["car", x, y] }
+  ]);
+  var tx = 2;
+  var ty = 2;
+  for (var p in map) {
+     if (map.hasOwnProperty(p)) {
+        var o = map[p];
+        instructions.push.apply(instructions, [
+           { "draw": ["ft", tx * 32, ty * 32, 32, 32, o.x, o.y, 32, 32] }
+        ]);
+     }
+  }
+  var cxc = cx * 32;
+  var cyc = cy * 32
+  instructions.push.apply(instructions, [
+     { "sstyle": "#FF0000" },
+     { "srect": [cxc, cyc, 32, 32] }
   ]);
   return instructions;
 };
