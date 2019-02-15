@@ -1,9 +1,15 @@
 <html>
    <head>
       <title>Cafre Client</title>
+      <style>
+         #viewport { background-color: black; position: relative; overflow: hidden; width: 512px; height: 512px; }
+         #viewport canvas { position: absolute; }
+      </style>
    </head>
    <body>
-      <canvas id="myCanvas" width="512" height="512" style="border: 1px solid black;"></canvas>
+      <div id="viewport">
+         <canvas id="main" width="512" height="512"></canvas>
+      </div>
       <span id="l"></span>
       <script>
 window.onload = function() {
@@ -15,11 +21,17 @@ window.onload = function() {
    var textures = {};
    var samples = {};
    var music = {};
-   var c = document.getElementById("myCanvas");
+   var canvases = {};
+   var c = document.getElementById("main");
    var ctx = c.getContext("2d");
+   canvases["main"] = { c: c, ctx: ctx };
+   ctx.fillStyle = "#FFFFFF";
    ctx.fillText("Press SPACE to connect.", 16, 16);
+   function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+   }
 
-   function process(r) {
+   async function process(r) {
       if (Array.isArray(r)) {
          for (var i = 0; i < r.length; ++i) {
             var inst = r[i];
@@ -58,7 +70,10 @@ window.onload = function() {
                            var x = args[1];
                            var y = args[2];
                            var t = textures[name];
-                           if (t && t.complete) {
+                           if (t) {
+                              while (!t.complete) {
+                                 await sleep(10);
+                              }
                               ctx.drawImage(t, x, y);
                            }
                         } else if (args.length == 5) {
@@ -67,7 +82,10 @@ window.onload = function() {
                            var w = args[3];
                            var h = args[4];
                            var t = textures[name];
-                           if (t && t.complete) {
+                           if (t) {
+                              while (!t.complete) {
+                                 await sleep(10);
+                              }
                               ctx.drawImage(t, x, y, w, h);
                            }
                         } else if (args.length == 9) {
@@ -78,15 +96,21 @@ window.onload = function() {
                            var x = args[5];
                            var y = args[6];
                            var w = args[7];
-                           var h = args[7];
+                           var h = args[8];
                            var t = textures[name];
-                           if (t && t.complete) {
+                           if (t) {
+                              while (!t.complete) {
+                                 await sleep(10);
+                              }
                               ctx.drawImage(t, sx, sy, sw, sh, x, y, w, h);
                            }
                         }
                      } else if (p == "sstyle") {
                         var style = args;
                         ctx.strokeStyle = style;
+                     } else if (p == "fstyle") {
+                        var style = args;
+                        ctx.fillStyle = style;
                      } else if (p == "srect") {
                         var x = args[0];
                         var y = args[1];
@@ -107,7 +131,10 @@ window.onload = function() {
                      } else if (p == "play") {
                         var name = args;
                         var s = samples[name];
-                        if (s && s.canplay) {
+                        if (s) {
+                           while (!s.canplay) {
+                              await sleep(10);
+                           }
                            s.smp.play();
                         }
                      } else if (p == "mus") {
@@ -123,6 +150,27 @@ window.onload = function() {
                         if (s) {
                            s.play();
                         }
+                     } else if (p == "canvas") {
+                        var name = args[0];
+                        var z = args[1];
+                        var c = document.createElement("canvas");
+                        canvases[name] = { c: c, ctx: c.getContext("2d") };
+                        c.setAttribute("width", "512");
+                        c.setAttribute("height", "512");
+                        document.getElementById("viewport").appendChild(c);
+                        if (z !== undefined) {
+                           c.style.zIndex = z;
+                        }
+                     } else if (p == "scanvas") {
+                        var cv = canvases[args];
+                        ctx = cv.ctx;
+                        c = cv.c;
+                     } else if (p == "crect") {
+                        var x = args[0];
+                        var y = args[1];
+                        var w = args[2];
+                        var h = args[3];
+                        ctx.clearRect(x, y, w, h);
                      }
                   }
                }
@@ -146,6 +194,7 @@ window.onload = function() {
    document.addEventListener("keydown", startListener);
    
    start = function() {
+      ctx.clearRect(0, 0, 512, 512);
       var events = [["load"]];
       document.addEventListener('keydown', function(e) {
          console.log(e.keyCode);
@@ -161,9 +210,9 @@ window.onload = function() {
       var connection = new WebSocket(server);
       var frame;
 
-      connection.onmessage = function (message) {
+      connection.onmessage = async function (message) {
          var r = JSON.parse(message.data);
-         process(r);
+         await process(r);
          var nTime = new Date().getTime();
          var dTime = nTime - cTime;
          var w = 1000 / 60;
