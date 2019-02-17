@@ -171,6 +171,162 @@ var load = true;
 var car = new Car();
 var cursor = new Cursor();
 
+class TextureClass {
+   constructor(name, src) {
+      this.name = name;
+      this.src = src;
+   }
+   
+   load(instructions) {
+      instructions.push({ "tex": [this.name, this.src] });
+   }
+   
+   draw(instructions, x, y) {
+      instructions.push({ "draw": [this.name, x, y] });
+   }
+   
+   drawSprite(instructions, x, y, w, h, sx, sy) {
+      instructions.push({ "draw": [this.name, sx, sy, w, h, x, y, w, h] });
+   }
+   
+   clearSprite(instructions, x, y, w, h) {
+      instructions.push({ "crect": [x, y, w, h] });
+   }
+}
+
+class TextureObject {
+   constructor(aClass, x, y) {
+      this.aClass = aClass;
+      this.x = x;
+      this.y = y;
+   }
+   
+   draw(instructions, x, y) {
+      this.aClass.draw(instructions, x + this.x, y + this.y);
+   }
+}
+
+class SpriteClass {
+   constructor(txtClass, sx, sy, sw, sh) {
+      this.txtClass = txtClass;
+      this.sx = sx;
+      this.sy = sy;
+      this.sw = sw;
+      this.sh = sh;
+   }
+   
+   draw(instructions, x, y) {
+      this.txtClass.drawSprite(instructions, x, y, this.sw, this.sh, this.sx, this.sy);
+   }
+   
+   clear(instructions, x, y) {
+      this.txtClass.clearSprite(instructions, x, y, this.sw, this.sh);
+   }
+   
+   createObject(x, y) {
+      return new SpriteObject(this, x, y);
+   }
+}
+
+class SpriteObject {
+   constructor(aClass, x, y) {
+      this.aClass = aClass;
+      this.x = x;
+      this.y = y;
+   }
+   
+   draw(instructions, x, y) {
+      this.aClass.draw(instructions, x + this.x, y + this.y);
+   }
+   
+   clear(instructions, x, y) {
+      this.aClass.clear(instructions, x + this.x, y + this.y);
+   }
+}
+
+class AnimationClass {
+   constructor(definition) {
+      this.definition = definition;
+   }
+   
+   createObject(x, y) {
+      return new AnimationObject(this, x, y);
+   }
+}
+
+class AnimationObject {
+   constructor(aClass, x, y) {
+      this.aClass = aClass;
+      this.x = x;
+      this.y = y;
+      this.objects = {};
+      this.frames = aClass.definition.frames;
+      this.frame = 0;
+      this.dList = {};
+      if (aClass.definition.oninit) {
+         aClass.definition.oninit(this);
+      }
+   }
+   
+   draw(instructions, x, y) {
+      var onframes = this.aClass.definition.onframes;
+      if (onframes) {
+         if (onframes.hasOwnProperty(this.frame)) {
+            onframes[this.frame](this);
+         }
+      }
+      for (var p in this.dList) {
+         if (this.dList.hasOwnProperty(p)) {
+            this.dList[p].draw(instructions, x + this.x, y + this.y);
+         }
+      }
+      this.frame += 1;
+      if (this.frame >= this.frames) {
+         this.frame = 0;
+      }
+   }
+   
+   clear(instructions, x, y) {
+      for (var p in this.dList) {
+         if (this.dList.hasOwnProperty(p)) {
+            this.dList[p].clear(instructions, x + this.x, y + this.y);
+         }
+      }      
+   }
+}
+
+var txtClass = new TextureClass("mario", "mario.png");
+var txtObj = new TextureObject(txtClass, 100, 100);
+var sprtClass = new SpriteClass(txtClass, 1, 10, 16, 24);
+var sprtClass2 = new SpriteClass(txtClass, 18, 10, 16, 24);
+var sprtObj = new SpriteObject(sprtClass, 0, 0);
+var sprtObj2 = new SpriteObject(sprtClass2, 50, 50);
+var animClass = new AnimationClass({
+   oninit: function(obj) {
+      obj.objects.walk0 = new SpriteObject(sprtClass, 0, 0);
+      obj.objects.walk1 = new SpriteObject(sprtClass2, 0, 0);
+   },
+   frames: 60,
+   onframes: {
+      0: function(obj) {
+         obj.dList = { walk0: obj.objects.walk0 };
+      },
+      30: function(obj) {
+         obj.dList = { walk1: obj.objects.walk1 }
+      }
+   }
+});
+var animObj = new AnimationObject(animClass, 10, 10);
+var animClass2 = new AnimationClass({
+   oninit: function(obj) {
+      obj.objects.anim0 = new AnimationObject(animClass, 0, 0);
+      obj.objects.anim1 = new AnimationObject(animClass, 16, 16);
+      obj.dList = { anim0: obj.objects.anim0, anim1: obj.objects.anim1 };
+   },
+   frames: 1
+});
+var animObj2 = new AnimationObject(animClass2, 50, 50);
+
 exports.update = function(events) {
    var instructions = [];
    for (var i = 0; i < events.length; ++i) {
@@ -205,10 +361,14 @@ exports.update = function(events) {
             ]);
          }
       }
+      txtClass.load(instructions);
    }
 
-   cursor.update(events, instructions);
-   car.update(events, instructions);
+   instructions.push({ "scanvas": "main" });
+   animObj2.clear(instructions, 10, 10);
+   animObj2.draw(instructions, 10, 10);
+   //cursor.update(events, instructions);
+   //car.update(events, instructions);
    if (load) {
       load = false;
    }
