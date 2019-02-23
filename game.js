@@ -3,6 +3,14 @@ var baseY = 256 - 30;
 var tx = 2;
 var ty = 2;  
 
+function getClearRectInst(x, y, w, h) {
+   return ["cr", [x, y, w, h]];
+}
+
+function getDrawInst(name, sx, sy, sw, sh, x, y, w, h) {
+   return ["d", [name, sx, sy, sw, h, x, y, w, h]];
+}
+
 class Car {
    constructor() {
       this.x = 8;
@@ -38,8 +46,8 @@ class Car {
             }
          }
       }
-      instructions.push({ "scanvas": "main" });
-      instructions.push({ "crect": [this.x, this.y, 30, 30] });
+      instructions.push(["sc", ["main"]]);
+      instructions.push(["cr", [this.x, this.y, 30, 30]]);
       if (this.left) {
          this.x -= 2;
       }
@@ -49,7 +57,7 @@ class Car {
   
       if (this.tryJump) {
          if (!this.isJumping) {
-            instructions.push({ "play": "jump" });
+            instructions.push(["p", ["jump"]]);
             this.isJumping = true;
          }
          this.tryJump = false;
@@ -64,9 +72,7 @@ class Car {
          }
       }
    
-      instructions.push.apply(instructions, [
-         { "draw": ["car", this.x, this.y] }
-      ]);         
+      instructions.push(["d", ["car", this.x, this.y]]);
    }
 }
 
@@ -106,8 +112,8 @@ class Cursor {
          }
       }
       
-      instructions.push({ "scanvas": "cursor" });
-      instructions.push({ "crect": [this.cx * 32, this.cy * 32, 32, 32] });
+      instructions.push(["sc", ["cursor"]]);
+      instructions.push(["cr", [this.cx * 32, this.cy * 32, 32, 32]]);
      
       if (this.cleft) {
          --(this.cx);
@@ -141,17 +147,17 @@ class Cursor {
       if (this.print) {
          var o = { x: this.cx * 32, y: this.cy * 32 };
          this.map[this.cx.toString() + "," + this.cy.toString()] = o;
-         instructions.push({ "scanvas": "blocks" });
-         instructions.push({ "crect": [o.x, o.y, 32, 32] });
-         instructions.push({ "draw": ["ft", tx * 32, ty * 32, 32, 32, o.x, o.y, 32, 32] });
+         instructions.push(["sc", ["blocks"]]);
+         instructions.push(getClearRectInst(o.x, o.y, 32, 32));
+         instructions.push(getDrawInst("ft", tx * 32, ty * 32, 32, 32, o.x, o.y, 32, 32));
          this.print = false;
       }
       if (this.del) {
          var k = this.cx.toString() + "," + this.cy.toString();
          if (this.map.hasOwnProperty(k)) {
             var o = this.map[k];
-            instructions.push({ "scanvas": "blocks" });
-            instructions.push({ "crect": [o.x, o.y, 32, 32] });
+            instructions.push(["sc", ["blocks"]]);
+            instructions.push(getClearRectInst(o.x, o.y, 32, 32));
             delete this.map[k];
          }
          this.del = false;
@@ -160,9 +166,9 @@ class Cursor {
       var cxc = this.cx * 32;
       var cyc = this.cy * 32;
       instructions.push.apply(instructions, [
-         { "scanvas": "cursor" },
-         { "sstyle": "#FF0000" },
-         { "draw": ["cursor", cxc, cyc] }
+         ["sc", ["cursor"]],
+         ["ss", ["#FF0000"]],
+         ["d", ["cursor", cxc, cyc]]
       ]);
    }
 }
@@ -178,19 +184,19 @@ class TextureClass {
    }
    
    load(instructions) {
-      instructions.push({ "tex": [this.name, this.src] });
+      instructions.push(["lt", [this.name, this.src]]);
    }
    
    draw(instructions, x, y) {
-      instructions.push({ "draw": [this.name, x, y] });
+      instructions.push(["d", [this.name, cxc, cyc]]);
    }
    
    drawSprite(instructions, x, y, w, h, sx, sy) {
-      instructions.push({ "draw": [this.name, sx, sy, w, h, x, y, w, h] });
+      instructions.push(getDrawInst(this.name, sx, sy, w, h, x, y, w, h));
    }
    
    clearSprite(instructions, x, y, w, h) {
-      instructions.push({ "crect": [x, y, w, h] });
+      instructions.push(getClearRectInst(x, y, w, h));
    }
 }
 
@@ -339,36 +345,35 @@ exports.update = function(events) {
 
    if (load) {
       instructions.push.apply(instructions, [
-         { "tex": ["car", "car.png"] },
-         { "tex": ["ft", "fantasy-tileset.png"] },
-         { "smpl": ["jump", "jump.ogg"] },
-         { "mus": ["cafre", "cafre.mp3"] },
-         { "canvas": ["blocks", 1] },
-         { "tex": ["cursor", "cursor.png"] },
-         { "canvas": ["cursor", 2] },
-         { "canvas": ["console", 3] },
-         { "scanvas": "console" },
-         { "fstyle": "#FFFFFF" },
-         { "text": ["Move with A and D. Jump with K.", 8, 8] }
-         //{ "pmus": "cafre" }
+         ["lt", ["car", "car.png"]],
+         ["lt", ["ft", "fantasy-tileset.png"]],
+         ["ls", ["jump", "jump.ogg"]],
+         ["lm", ["cafre", "cafre.mp3"]],
+         ["cc", ["blocks", 1]],
+         ["lt", ["cursor", "cursor.png"]],
+         ["cc", ["cursor", 2]],
+         ["cc", ["console", 3]],
+         ["sc", ["console"]],
+         ["sfs", ["#FFFFFF"]],
+         ["dt", ["Move with A and D. Jump with K.", 8, 8]],
+         //["pm", ["cafre"]]
       ]);
-      instructions.push({ "scanvas": "blocks" });
+      
+      instructions.push(["sc", ["blocks"]]);
       for (var p in cursor.map) {
          if (cursor.map.hasOwnProperty(p)) {
             var o = cursor.map[p];
-            instructions.push.apply(instructions, [
-              { "draw": ["ft", tx * 32, ty * 32, 32, 32, o.x, o.y, 32, 32] }
-            ]);
+            instructions.push(["d", ["ft", tx * 32, ty * 32, 32, 32, o.x, o.y, 32, 32]]);
          }
       }
       txtClass.load(instructions);
    }
 
-   instructions.push({ "scanvas": "main" });
+   instructions.push(["sc", ["main"]]);
    animObj2.clear(instructions, 10, 10);
    animObj2.draw(instructions, 10, 10);
-   //cursor.update(events, instructions);
-   //car.update(events, instructions);
+   cursor.update(events, instructions);
+   car.update(events, instructions);
    if (load) {
       load = false;
    }

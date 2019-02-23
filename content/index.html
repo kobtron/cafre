@@ -7,175 +7,42 @@
       </style>
    </head>
    <body>
-      <div id="viewport">
-         <canvas id="main" width="512" height="512"></canvas>
-      </div>
-      <span id="l"></span>
+      <script src="/script.js"></script>
       <script>
 window.onload = function() {
-   var domain = "localhost";
-   var port = "3000";
-   var dAndP = domain + ":" + port;
-   var server = 'ws://' + dAndP;
-   var cServer = "http://" + dAndP;
-   var textures = {};
-   var samples = {};
-   var music = {};
-   var canvases = {};
-   var c = document.getElementById("main");
+   var body = document.getElementsByTagName('body')[0];
+   var viewport = document.createElement("div");
+   viewport.setAttribute("id", "viewport");
+   body.appendChild(viewport);
+   var c = document.createElement("canvas");
+   c.setAttribute("id", "main");
+   c.setAttribute("width", "512");
+   c.setAttribute("height", "512");
+   viewport.appendChild(c);
+   var l = document.createElement("span");
+   l.setAttribute("id", "l");
+   body.appendChild(l);
+   //var c = document.getElementById("main");
    var ctx = c.getContext("2d");
    canvases["main"] = { c: c, ctx: ctx };
    ctx.fillStyle = "#FFFFFF";
    ctx.fillText("Press SPACE to connect.", 16, 16);
-   function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
-   }
-
+   
+   
    async function process(r) {
       if (Array.isArray(r)) {
          for (var i = 0; i < r.length; ++i) {
             var inst = r[i];
-            if (typeof inst === "string") {
-               if (inst == "clear") {
-                  ctx.clearRect(0, 0, c.width, c.height);
-               }
-            } else if (Array.isArray(inst)) {
+            if (Array.isArray(inst)) {
                var name = inst[0];
-               var src = inst[1];
-               var img = document.createElement("img");
-               img.setAttribute("src", cServer + "/" + src);
-               textures[name] = img;
-            } else if (typeof inst === "object") {
-               for (var p in inst) {
-                  if (inst.hasOwnProperty(p)) {
-                     var args = inst[p];
-                     if (p == "tex") {
-                        var name = args[0];
-                        var src = args[1];
-                        var img = document.createElement("img");
-                        img.setAttribute("src", cServer + "/" + src);
-                        textures[name] = img;
-                     } else if (p == "text") {
-                        var txt = args[0];
-                        var x = args[1];
-                        var y = args[2];
-                        var font = args[3];
-                        if (font) {
-                           ctx.font = font;
-                        }
-                        ctx.fillText(txt, x, y);
-                     } else if (p == "draw") {
-                        var name = args[0];
-                        if (args.length == 3) {
-                           var x = args[1];
-                           var y = args[2];
-                           var t = textures[name];
-                           if (t) {
-                              while (!t.complete) {
-                                 await sleep(10);
-                              }
-                              ctx.drawImage(t, x, y);
-                           }
-                        } else if (args.length == 5) {
-                           var x = args[1];
-                           var y = args[2];
-                           var w = args[3];
-                           var h = args[4];
-                           var t = textures[name];
-                           if (t) {
-                              while (!t.complete) {
-                                 await sleep(10);
-                              }
-                              ctx.drawImage(t, x, y, w, h);
-                           }
-                        } else if (args.length == 9) {
-                           var sx = args[1];
-                           var sy = args[2];
-                           var sw = args[3];
-                           var sh = args[4];
-                           var x = args[5];
-                           var y = args[6];
-                           var w = args[7];
-                           var h = args[8];
-                           var t = textures[name];
-                           if (t) {
-                              while (!t.complete) {
-                                 await sleep(10);
-                              }
-                              ctx.drawImage(t, sx, sy, sw, sh, x, y, w, h);
-                           }
-                        }
-                     } else if (p == "sstyle") {
-                        var style = args;
-                        ctx.strokeStyle = style;
-                     } else if (p == "fstyle") {
-                        var style = args;
-                        ctx.fillStyle = style;
-                     } else if (p == "srect") {
-                        var x = args[0];
-                        var y = args[1];
-                        var w = args[2];
-                        var h = args[3];
-                        ctx.strokeRect(x, y, w, h);
-                     } else if (p == "smpl") {
-                        var name = args[0];
-                        var src = args[1];
-                        var smp = document.createElement("audio");
-                        smp.setAttribute("src", cServer + "/" + src);
-                        samples[name] = { smp: smp, canplay: false };
-                        (function(sample) {
-                           sample.smp.oncanplaythrough = function() {
-                              sample.canplay = true;
-                           };
-                        })(samples[name]);
-                     } else if (p == "play") {
-                        var name = args;
-                        var s = samples[name];
-                        if (s) {
-                           while (!s.canplay) {
-                              await sleep(10);
-                           }
-                           s.smp.play();
-                        }
-                     } else if (p == "mus") {
-                        var name = args[0];
-                        var src = args[1];
-                        var smp = document.createElement("audio");
-                        smp.loop = true;
-                        smp.setAttribute("src", cServer + "/" + src);
-                        music[name] = smp;
-                     } else if (p == "pmus") {
-                        var name = args;
-                        var s = music[name];
-                        if (s) {
-                           s.play();
-                        }
-                     } else if (p == "canvas") {
-                        var name = args[0];
-                        var z = args[1];
-                        var c = document.createElement("canvas");
-                        canvases[name] = { c: c, ctx: c.getContext("2d") };
-                        c.setAttribute("width", "512");
-                        c.setAttribute("height", "512");
-                        document.getElementById("viewport").appendChild(c);
-                        if (z !== undefined) {
-                           c.style.zIndex = z;
-                        }
-                     } else if (p == "scanvas") {
-                        var cv = canvases[args];
-                        ctx = cv.ctx;
-                        c = cv.c;
-                     } else if (p == "crect") {
-                        var x = args[0];
-                        var y = args[1];
-                        var w = args[2];
-                        var h = args[3];
-                        ctx.clearRect(x, y, w, h);
-                     }
-                  }
-               }
+               var args = inst[1];
+               await window.fns[name].apply(this, args);
+            } else {
+               throw "Unhandled instruction";
             }
          }
+      } else {
+         throw "Unhandled instruction";
       }
    }
 
@@ -197,12 +64,12 @@ window.onload = function() {
       ctx.clearRect(0, 0, 512, 512);
       var events = [["load"]];
       document.addEventListener('keydown', function(e) {
-         console.log(e.keyCode);
+         //console.log(e.keyCode);
          events.push(["keydown", e.keyCode]);
          e.preventDefault();
       });
       document.addEventListener('keyup', function(e) {
-         console.log(e.keyCode);
+         //console.log(e.keyCode);
          events.push(["keyup", e.keyCode]);
          e.preventDefault();
       });
@@ -211,24 +78,26 @@ window.onload = function() {
       var frame;
 
       connection.onmessage = async function (message) {
-         var r = JSON.parse(message.data);
-         await process(r);
+         var r = message.data;
+         await process(JSON.parse(r));
          var nTime = new Date().getTime();
          var dTime = nTime - cTime;
          var w = 1000 / 60;
          w -= dTime;
          if (w < 0) {
-            l.innerHTML = "!!!";
+            console.warn("Slow frame!!!");
+            //l.innerHTML = "!!!";
             w = 0;
          } else {
-            l.innerHTML = "";
+            //l.innerHTML = "";
          }
          cTime = nTime;
          setTimeout(frame, w);
       };
 
       frame = function() {
-         connection.send(JSON.stringify(events));
+         var ev = JSON.stringify(events);
+         connection.send(ev);
          events = [];
       }
 
