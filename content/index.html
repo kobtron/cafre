@@ -2,32 +2,29 @@
    <head>
       <title>Cafre Client</title>
       <style>
-         #viewport { background-color: black; position: relative; overflow: hidden; width: 512px; height: 512px; }
+         #viewport { background-color: black; position: relative; overflow: hidden; width: 512px; height: 512px; display: inline-block; vertical-align: text-top; }
          #viewport canvas { position: absolute; }
+
+#filebrowser {
+   display: inline-block;
+   vertical-align: text-top;
+   border: 1px solid black;
+}
+li.selected {
+   background-color: blue;
+}
+#filebrowser ul { list-style-type: none; padding: 0px; margin: 0px; }
       </style>
    </head>
    <body>
-      <script src="/script.js"></script>
+      <span id="advice">Press SPACE to connect.</span>
+      <script src="script.js"></script>
       <script>
 window.onload = function() {
    var body = document.getElementsByTagName('body')[0];
-   var viewport = document.createElement("div");
-   viewport.setAttribute("id", "viewport");
-   body.appendChild(viewport);
-   var c = document.createElement("canvas");
-   c.setAttribute("id", "main");
-   c.setAttribute("width", "512");
-   c.setAttribute("height", "512");
-   viewport.appendChild(c);
    var l = document.createElement("span");
    l.setAttribute("id", "l");
    body.appendChild(l);
-   //var c = document.getElementById("main");
-   var ctx = c.getContext("2d");
-   canvases["main"] = { c: c, ctx: ctx };
-   ctx.fillStyle = "#FFFFFF";
-   ctx.fillText("Press SPACE to connect.", 16, 16);
-   
    
    async function process(r) {
       if (Array.isArray(r)) {
@@ -53,6 +50,8 @@ window.onload = function() {
    var startListener = function(e) {
       if (e.keyCode == 32) {
          document.removeEventListener("keydown", startListener);
+         var a = document.getElementById("advice");
+         a.parentNode.removeChild(a);
          start();
       }
       e.preventDefault();
@@ -61,15 +60,11 @@ window.onload = function() {
    document.addEventListener("keydown", startListener);
    
    start = function() {
-      ctx.clearRect(0, 0, 512, 512);
-      var events = [["load"]];
       document.addEventListener('keydown', function(e) {
-         //console.log(e.keyCode);
          events.push(["keydown", e.keyCode]);
          e.preventDefault();
       });
       document.addEventListener('keyup', function(e) {
-         //console.log(e.keyCode);
          events.push(["keyup", e.keyCode]);
          e.preventDefault();
       });

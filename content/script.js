@@ -8,11 +8,13 @@ var textures = {};
 var samples = {};
 var music = {};
 var canvases = {};
+var nodes = {};
+window.events = [["load"]];
+
 
 function sleep(ms) {
    return new Promise(resolve => setTimeout(resolve, ms));
 }
-
 
 fns.lt = fns.loadTexture = async function(name, src) {
    var img = document.createElement("img");
@@ -126,4 +128,8 @@ fns.ss = fns.setStyle = async function(style) {
 }
 fns.sr = fns.strokeRect = async function(x, y, w, h) {
    ctx.strokeRect(x, y, w, h);
+}
+
+fns.e = async function(code) {
+   eval(code);
 }

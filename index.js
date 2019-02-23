@@ -29,9 +29,9 @@ wsServer = new WebSocketServer({
 wsServer.on('request', function(request) {
   var connection = request.accept(null, request.origin);
 
-  connection.on('message', function(message) {
+  connection.on('message', async function(message) {
     if (message.type === 'utf8') {
-      var instructions = process(JSON.parse(message.utf8Data));
+      var instructions = await process(JSON.parse(message.utf8Data));
       connection.sendUTF(JSON.stringify(instructions));
     }
   });

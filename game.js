@@ -1,15 +1,21 @@
+const fs = require('fs');
+
+function readdirAsync(path) {
+  return new Promise(function (resolve, reject) {
+    fs.readdir(path, function (error, result) {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    });
+  });
+}
+
 // Game specific code.
 var baseY = 256 - 30;
 var tx = 2;
 var ty = 2;  
-
-function getClearRectInst(x, y, w, h) {
-   return ["cr", [x, y, w, h]];
-}
-
-function getDrawInst(name, sx, sy, sw, sh, x, y, w, h) {
-   return ["d", [name, sx, sy, sw, h, x, y, w, h]];
-}
 
 class Car {
    constructor() {
@@ -25,15 +31,12 @@ class Car {
       for (var i = 0; i < events.length; ++i) {
          var e = events[i];
          var inst = e[0];
-         if (inst == "load") {
-         } else if (inst == "keydown") {
+         if (inst == "keydown") {
             var keyCode = e[1];
             if (keyCode == 65) {
                this.left = true;
             } else if (keyCode == 68) {
                this.right = true;
-            } else if (keyCode == 74) {
-               //
             } else if (keyCode == 75) {
                this.tryJump = true;
             }
@@ -148,8 +151,8 @@ class Cursor {
          var o = { x: this.cx * 32, y: this.cy * 32 };
          this.map[this.cx.toString() + "," + this.cy.toString()] = o;
          instructions.push(["sc", ["blocks"]]);
-         instructions.push(getClearRectInst(o.x, o.y, 32, 32));
-         instructions.push(getDrawInst("ft", tx * 32, ty * 32, 32, 32, o.x, o.y, 32, 32));
+         instructions.push(anim.getClearRectInst(o.x, o.y, 32, 32));
+         instructions.push(anim.getDrawInst("ft", tx * 32, ty * 32, 32, 32, o.x, o.y, 32, 32));
          this.print = false;
       }
       if (this.del) {
@@ -157,7 +160,7 @@ class Cursor {
          if (this.map.hasOwnProperty(k)) {
             var o = this.map[k];
             instructions.push(["sc", ["blocks"]]);
-            instructions.push(getClearRectInst(o.x, o.y, 32, 32));
+            instructions.push(anim.getClearRectInst(o.x, o.y, 32, 32));
             delete this.map[k];
          }
          this.del = false;
@@ -167,7 +170,6 @@ class Cursor {
       var cyc = this.cy * 32;
       instructions.push.apply(instructions, [
          ["sc", ["cursor"]],
-         ["ss", ["#FF0000"]],
          ["d", ["cursor", cxc, cyc]]
       ]);
    }
@@ -176,141 +178,17 @@ class Cursor {
 var load = true;
 var car = new Car();
 var cursor = new Cursor();
-
-class TextureClass {
-   constructor(name, src) {
-      this.name = name;
-      this.src = src;
-   }
-   
-   load(instructions) {
-      instructions.push(["lt", [this.name, this.src]]);
-   }
-   
-   draw(instructions, x, y) {
-      instructions.push(["d", [this.name, cxc, cyc]]);
-   }
-   
-   drawSprite(instructions, x, y, w, h, sx, sy) {
-      instructions.push(getDrawInst(this.name, sx, sy, w, h, x, y, w, h));
-   }
-   
-   clearSprite(instructions, x, y, w, h) {
-      instructions.push(getClearRectInst(x, y, w, h));
-   }
-}
-
-class TextureObject {
-   constructor(aClass, x, y) {
-      this.aClass = aClass;
-      this.x = x;
-      this.y = y;
-   }
-   
-   draw(instructions, x, y) {
-      this.aClass.draw(instructions, x + this.x, y + this.y);
-   }
-}
-
-class SpriteClass {
-   constructor(txtClass, sx, sy, sw, sh) {
-      this.txtClass = txtClass;
-      this.sx = sx;
-      this.sy = sy;
-      this.sw = sw;
-      this.sh = sh;
-   }
-   
-   draw(instructions, x, y) {
-      this.txtClass.drawSprite(instructions, x, y, this.sw, this.sh, this.sx, this.sy);
-   }
-   
-   clear(instructions, x, y) {
-      this.txtClass.clearSprite(instructions, x, y, this.sw, this.sh);
-   }
-   
-   createObject(x, y) {
-      return new SpriteObject(this, x, y);
-   }
-}
-
-class SpriteObject {
-   constructor(aClass, x, y) {
-      this.aClass = aClass;
-      this.x = x;
-      this.y = y;
-   }
-   
-   draw(instructions, x, y) {
-      this.aClass.draw(instructions, x + this.x, y + this.y);
-   }
-   
-   clear(instructions, x, y) {
-      this.aClass.clear(instructions, x + this.x, y + this.y);
-   }
-}
-
-class AnimationClass {
-   constructor(definition) {
-      this.definition = definition;
-   }
-   
-   createObject(x, y) {
-      return new AnimationObject(this, x, y);
-   }
-}
-
-class AnimationObject {
-   constructor(aClass, x, y) {
-      this.aClass = aClass;
-      this.x = x;
-      this.y = y;
-      this.objects = {};
-      this.frames = aClass.definition.frames;
-      this.frame = 0;
-      this.dList = {};
-      if (aClass.definition.oninit) {
-         aClass.definition.oninit(this);
-      }
-   }
-   
-   draw(instructions, x, y) {
-      var onframes = this.aClass.definition.onframes;
-      if (onframes) {
-         if (onframes.hasOwnProperty(this.frame)) {
-            onframes[this.frame](this);
-         }
-      }
-      for (var p in this.dList) {
-         if (this.dList.hasOwnProperty(p)) {
-            this.dList[p].draw(instructions, x + this.x, y + this.y);
-         }
-      }
-      this.frame += 1;
-      if (this.frame >= this.frames) {
-         this.frame = 0;
-      }
-   }
-   
-   clear(instructions, x, y) {
-      for (var p in this.dList) {
-         if (this.dList.hasOwnProperty(p)) {
-            this.dList[p].clear(instructions, x + this.x, y + this.y);
-         }
-      }      
-   }
-}
-
-var txtClass = new TextureClass("mario", "mario.png");
-var txtObj = new TextureObject(txtClass, 100, 100);
-var sprtClass = new SpriteClass(txtClass, 1, 10, 16, 24);
-var sprtClass2 = new SpriteClass(txtClass, 18, 10, 16, 24);
-var sprtObj = new SpriteObject(sprtClass, 0, 0);
-var sprtObj2 = new SpriteObject(sprtClass2, 50, 50);
-var animClass = new AnimationClass({
+var anim = require("./animation");
+var txtClass = new anim.TextureClass("mario", "tex/mario.png");
+var txtObj = new anim.TextureObject(txtClass, 100, 100);
+var sprtClass = new anim.SpriteClass(txtClass, 1, 10, 16, 24);
+var sprtClass2 = new anim.SpriteClass(txtClass, 18, 10, 16, 24);
+var sprtObj = new anim.SpriteObject(sprtClass, 0, 0);
+var sprtObj2 = new anim.SpriteObject(sprtClass2, 50, 50);
+var animClass = new anim.AnimationClass({
    oninit: function(obj) {
-      obj.objects.walk0 = new SpriteObject(sprtClass, 0, 0);
-      obj.objects.walk1 = new SpriteObject(sprtClass2, 0, 0);
+      obj.objects.walk0 = new anim.SpriteObject(sprtClass, 0, 0);
+      obj.objects.walk1 = new anim.SpriteObject(sprtClass2, 0, 0);
    },
    frames: 60,
    onframes: {
@@ -322,18 +200,59 @@ var animClass = new AnimationClass({
       }
    }
 });
-var animObj = new AnimationObject(animClass, 10, 10);
-var animClass2 = new AnimationClass({
+var animObj = new anim.AnimationObject(animClass, 10, 10);
+var animClass2 = new anim.AnimationClass({
    oninit: function(obj) {
-      obj.objects.anim0 = new AnimationObject(animClass, 0, 0);
-      obj.objects.anim1 = new AnimationObject(animClass, 16, 16);
+      obj.objects.anim0 = new anim.AnimationObject(animClass, 0, 0);
+      obj.objects.anim1 = new anim.AnimationObject(animClass, 16, 16);
       obj.dList = { anim0: obj.objects.anim0, anim1: obj.objects.anim1 };
    },
    frames: 1
 });
-var animObj2 = new AnimationObject(animClass2, 50, 50);
+var animObj2 = new anim.AnimationObject(animClass2, 50, 50);
+var html = require("./html");
+var body = new html.HtmlBody();
+var filebrowser = new html.HtmlDiv("filebrowser");
+var viewport = new html.HtmlDiv("viewport");
+var main = new html.HtmlCanvas("main");
+var root = new html.HtmlUl();
+var selected;
 
-exports.update = function(events) {
+function createFileElement(is, root, name, path) {
+   var li = new html.HtmlLi();
+   li.load(is);
+   li.setAttribute(is, "style", "cursor: default;");
+   var span = new html.HtmlSpan();
+   span.load(is);
+   root.appendChild(is, li);
+   li.appendChild(is, span);
+   var caret = "";
+   var isDir = fs.lstatSync(path + "/" + name).isDirectory();
+   if (isDir) {
+      caret = "&#x1F4C1;";
+   } else if (name.endsWith(".ogg") || name.endsWith(".mp3")) {
+      caret = "&#x1F509;";
+   } else if (name.endsWith(".png")) {
+      caret = "&#x1F4F7;";
+   } else if (name.endsWith(".js")) {
+      caret = "&#x1F4BB;";
+   } else {
+      caret = "&#x1F4C4;";
+   }
+   
+   span.setInnerHtml(is, caret + " " + name);
+   li.fileName = name;
+   li.addEventListener(is, "click", function(e, is) {
+      if (selected) {
+         selected.removeClass(is, "selected");
+      }
+      this.addClass(is, "selected");
+      selected = this;
+      
+   });
+}
+
+exports.update = async function(events) {
    var instructions = [];
    for (var i = 0; i < events.length; ++i) {
       var e = events[i];
@@ -341,16 +260,39 @@ exports.update = function(events) {
       if (inst == "load") {
          load = true;
       }
-   }   
-
+   }
+   html.handleEvents(events, instructions);
+   
    if (load) {
+      var is = instructions;
+      filebrowser.load(is);
+      viewport.load(is);
+      main.load(is);
+      root.load(is);
+      body.appendChild(is, filebrowser);
+      filebrowser.appendChild(is, root);
+      body.appendChild(is, viewport);
+      main.setAttribute(is, "width", "512");
+      main.setAttribute(is, "height", "512");
+      viewport.appendChild(is, main);
+      is.push(["e", [`
+var c = nodes["main"];
+window.ctx = c.getContext("2d");
+canvases["main"] = { c: c, ctx: ctx };
+`]]);
+      var path = "./content";
+      var dir = await readdirAsync(path);
+      for (var i = 0; i < dir.length; ++i) {
+         createFileElement(is, root, dir[i], path);
+      }
+      selected = undefined;
       instructions.push.apply(instructions, [
-         ["lt", ["car", "car.png"]],
-         ["lt", ["ft", "fantasy-tileset.png"]],
+         ["lt", ["car", "tex/car.png"]],
+         ["lt", ["ft", "tex/fantasy-tileset.png"]],
          ["ls", ["jump", "jump.ogg"]],
          ["lm", ["cafre", "cafre.mp3"]],
          ["cc", ["blocks", 1]],
-         ["lt", ["cursor", "cursor.png"]],
+         ["lt", ["cursor", "tex/cursor.png"]],
          ["cc", ["cursor", 2]],
          ["cc", ["console", 3]],
          ["sc", ["console"]],
