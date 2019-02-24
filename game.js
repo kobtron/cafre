@@ -179,37 +179,6 @@ var load = true;
 var car = new Car();
 var cursor = new Cursor();
 var anim = require("./animation");
-var txtClass = new anim.TextureClass("mario", "tex/mario.png");
-var txtObj = new anim.TextureObject(txtClass, 100, 100);
-var sprtClass = new anim.SpriteClass(txtClass, 1, 10, 16, 24);
-var sprtClass2 = new anim.SpriteClass(txtClass, 18, 10, 16, 24);
-var sprtObj = new anim.SpriteObject(sprtClass, 0, 0);
-var sprtObj2 = new anim.SpriteObject(sprtClass2, 50, 50);
-var animClass = new anim.AnimationClass({
-   oninit: function(obj) {
-      obj.objects.walk0 = new anim.SpriteObject(sprtClass, 0, 0);
-      obj.objects.walk1 = new anim.SpriteObject(sprtClass2, 0, 0);
-   },
-   frames: 60,
-   onframes: {
-      0: function(obj) {
-         obj.dList = { walk0: obj.objects.walk0 };
-      },
-      30: function(obj) {
-         obj.dList = { walk1: obj.objects.walk1 }
-      }
-   }
-});
-var animObj = new anim.AnimationObject(animClass, 10, 10);
-var animClass2 = new anim.AnimationClass({
-   oninit: function(obj) {
-      obj.objects.anim0 = new anim.AnimationObject(animClass, 0, 0);
-      obj.objects.anim1 = new anim.AnimationObject(animClass, 16, 16);
-      obj.dList = { anim0: obj.objects.anim0, anim1: obj.objects.anim1 };
-   },
-   frames: 1
-});
-var animObj2 = new anim.AnimationObject(animClass2, 50, 50);
 var html = require("./html");
 var body = new html.HtmlBody();
 var filebrowser = new html.HtmlDiv("filebrowser");
@@ -217,6 +186,77 @@ var viewport = new html.HtmlDiv("viewport");
 var main = new html.HtmlCanvas("main");
 var root = new html.HtmlUl();
 var selected;
+var path = "./classes";
+var cObj = undefined;
+var cClass = undefined;
+var lCObj = false;
+
+function loadTextureClass(path, fileName) {
+   var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
+   var td = JSON.parse(contents);
+   var tc = new anim.TextureClass(td.name, td.src);
+   return tc;
+}
+
+function loadSpriteClass(path, fileName) {
+   var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
+   var def = JSON.parse(contents);
+   var tc = loadTextureClass(path, def.texture);
+   return new anim.SpriteClass(tc, def.x, def.y, def.w, def.h);
+}
+
+function loadAnimationClass(path, fileName, is) {
+   var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
+   var def = JSON.parse(contents);
+   return (function(def) {
+      var config = {
+         frames: def.frames
+      };
+      if (def.objects) {
+         config.oninit = function(obj) {
+            for (var p in def.objects) {
+               if (def.objects.hasOwnProperty(p)) {
+                  var oDef = def.objects[p];
+                  if (oDef.file.endsWith(".sprt")) {
+                     var c = loadSpriteClass(path, oDef.file);
+                     c.load(is);
+                     obj.objects[p] = new anim.SpriteObject(c, oDef.x, oDef.y);
+                  } else if (oDef.file.endsWith(".anim")) {
+                     var c = loadAnimationClass(path, oDef.file, is);
+                     c.load(is);
+                     obj.objects[p] = new anim.AnimationObject(c, oDef.x, oDef.y);
+                  }
+               }
+            }
+            if (def.oninit) {
+               obj.dList = {};
+               for (var i = 0; i < def.oninit.length; ++i) {
+                  var name = def.oninit[i];
+                  obj.dList[name] = obj.objects[name];
+               }
+            }
+         }
+      }
+      if (def.animation) {
+         config.onframes = {};
+         for (var p in def.animation) {
+            if (def.animation.hasOwnProperty(p)) {
+               var d = def.animation[p];
+               config.onframes[p] = (function(d) {
+                  return function(obj) {
+                     obj.dList = {};
+                     for (var i = 0; i < d.length; ++i) {
+                        obj.dList[d[i]] = obj.objects[d[i]];
+                     }
+                  }
+               })(d);
+            }
+         }
+      }
+      var animClass = new anim.AnimationClass(config);
+      return animClass;
+   })(def);
+}
 
 function createFileElement(is, root, name, path) {
    var li = new html.HtmlLi();
@@ -248,7 +288,25 @@ function createFileElement(is, root, name, path) {
       }
       this.addClass(is, "selected");
       selected = this;
-      
+      is.push(["sc", ["main"]]);
+      is.push(["cr", [0, 0, 512, 512]]);
+      if (this.fileName.endsWith(".tex")) {
+         cClass = loadTextureClass(path, this.fileName);
+         cObj = new anim.TextureObject(cClass, 0, 0);
+         lCObj = true;
+      } else if (this.fileName.endsWith(".sprt")) {
+         cClass = loadSpriteClass(path, this.fileName);
+         cObj = new anim.SpriteObject(cClass, 0, 0);
+         lCObj = true;         
+      } else if (this.fileName.endsWith(".anim")) {
+         cClass = loadAnimationClass(path, this.fileName, is);
+         cObj = new anim.AnimationObject(cClass, 0, 0);
+         lCObj = true;         
+      } else {
+         cClass = undefined;
+         cObj = undefined;
+         lCObj = false;
+      }
    });
 }
 
@@ -261,6 +319,7 @@ exports.update = async function(events) {
          load = true;
       }
    }
+   
    html.handleEvents(events, instructions);
    
    if (load) {
@@ -280,13 +339,14 @@ var c = nodes["main"];
 window.ctx = c.getContext("2d");
 canvases["main"] = { c: c, ctx: ctx };
 `]]);
-      var path = "./content";
       var dir = await readdirAsync(path);
       for (var i = 0; i < dir.length; ++i) {
          createFileElement(is, root, dir[i], path);
       }
       selected = undefined;
-      instructions.push.apply(instructions, [
+      cClass = undefined;
+      cObj = undefined;
+      /*instructions.push.apply(instructions, [
          ["lt", ["car", "tex/car.png"]],
          ["lt", ["ft", "tex/fantasy-tileset.png"]],
          ["ls", ["jump", "jump.ogg"]],
@@ -307,15 +367,22 @@ canvases["main"] = { c: c, ctx: ctx };
             var o = cursor.map[p];
             instructions.push(["d", ["ft", tx * 32, ty * 32, 32, 32, o.x, o.y, 32, 32]]);
          }
-      }
-      txtClass.load(instructions);
+      }*/
+   }
+   if (lCObj) {
+      cClass.load(instructions);
+      lCObj = false;
+   }
+   if (cObj) {
+      cObj.clear(instructions, 0, 0);
+      cObj.draw(instructions, 0, 0);
    }
 
-   instructions.push(["sc", ["main"]]);
+   /*instructions.push(["sc", ["main"]]);
    animObj2.clear(instructions, 10, 10);
    animObj2.draw(instructions, 10, 10);
    cursor.update(events, instructions);
-   car.update(events, instructions);
+   car.update(events, instructions);*/
    if (load) {
       load = false;
    }

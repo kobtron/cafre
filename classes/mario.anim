@@ -1,0 +1,19 @@
+{
+   "objects": {
+      "walk0": {
+         "file": "mario1.sprt",
+         "x": 0,
+         "y": 0
+      },
+      "walk1": {
+         "file": "mario2.sprt",
+         "x": 0,
+         "y": 0
+      }
+   },
+   "frames": 60,
+   "animation": {
+      "0": ["walk0"],
+      "30": ["walk1"]
+   }
+}

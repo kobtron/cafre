@@ -17,7 +17,7 @@ class TextureClass {
    }
    
    draw(instructions, x, y) {
-      instructions.push(["d", [this.name, cxc, cyc]]);
+      instructions.push(["d", [this.name, x, y]]);
    }
    
    drawSprite(instructions, x, y, w, h, sx, sy) {
@@ -38,6 +38,9 @@ class TextureObject {
    
    draw(instructions, x, y) {
       this.aClass.draw(instructions, x + this.x, y + this.y);
+   }
+   
+   clear(instructions, x, y) {
    }
 }
 
@@ -60,6 +63,10 @@ class SpriteClass {
    
    createObject(x, y) {
       return new SpriteObject(this, x, y);
+   }
+   
+   load(instructions) {
+      this.txtClass.load(instructions);
    }
 }
 
@@ -86,6 +93,9 @@ class AnimationClass {
    
    createObject(x, y) {
       return new AnimationObject(this, x, y);
+   }
+   
+   load(instructions) {
    }
 }
 

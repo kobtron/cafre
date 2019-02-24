@@ -1,0 +1,16 @@
+{
+   "objects": {
+      "anim0": {
+         "file": "mario.anim",
+         "x": 0,
+         "y": 0
+      },
+      "anim1": {
+         "file": "mario.anim",
+         "x": 16,
+         "y": 16
+      }
+   },
+   "frames": 1,
+   "oninit": ["anim0", "anim1"]
+}
