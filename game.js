@@ -302,6 +302,30 @@ function createFileElement(is, root, name, path) {
          cClass = loadAnimationClass(path, this.fileName, is);
          cObj = new anim.AnimationObject(cClass, 0, 0);
          lCObj = true;         
+      } else if (this.fileName.endsWith(".js")) {
+         require(path + "/" + this.fileName.substring(0, this.fileName.length - 3))(path);
+      } else if (this.fileName.endsWith(".tb")) {
+         var contents = fs.readFileSync(path + "/" + this.fileName, 'utf8');
+         var def = JSON.parse(contents);
+         var config = {
+            frames: 1
+         };
+         var line = def[0];
+         config.oninit = function(obj) {
+            obj.dList = {};
+            for (var i = 0; i < line.length; ++i) {
+               var cf = line[i];
+               var c = loadAnimationClass(path, cf, is);
+               c.load(is);
+               var name = "0," + i.toString();
+               obj.objects[name] = new anim.AnimationObject(c, 16 * i + (1 * i), 0);
+               obj.dList[name] = obj.objects[name];
+            }
+         }
+         var animClass = new anim.AnimationClass(config);
+         cClass = animClass;
+         cObj = new anim.AnimationObject(cClass, 0, 0);
+         lCObj = false;         
       } else {
          cClass = undefined;
          cObj = undefined;

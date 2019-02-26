@@ -1,4 +1,6 @@
 {
+   "w": 16,
+   "h": 24,
    "objects": {
       "walk0": {
          "file": "mario1.sprt",
