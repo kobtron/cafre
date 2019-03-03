@@ -68,7 +68,6 @@ class SpriteClass {
    }
    
    load(instructions) {
-      this.txtClass.load(instructions);
    }
    unload(instructions) {
    }
