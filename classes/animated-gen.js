@@ -63,4 +63,23 @@ module.exports = function(path) {
       anim.oninit.push("tool-" + i);
    }
    fs.writeFileSync(path + "/animated.tb", JSON.stringify(anim));
+   anim = {
+      "w": 32 * 16,
+      "h": 32 * 16,
+      "objects": {
+      },
+      "frames": 1,
+      "oninit": []
+   };
+   for (var i = 0; i < 32; ++i) {
+      for (var j = 0; j < 32; ++j) {
+         anim.objects[i + "-" + j] = {
+            "file": "animated/qblock.anim",
+            "x": i * 16,
+            "y": j * 16
+         };
+         anim.oninit.push(i + "-" + j);
+      }
+   }
+   fs.writeFileSync(path + "/animated/stress.anim", JSON.stringify(anim));
 };

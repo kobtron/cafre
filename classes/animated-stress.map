@@ -1,0 +1,29 @@
+{
+   "objects": {
+   },
+   "layers": [
+      {
+         "name": "toolbox",
+         "x": 0,
+         "y": 0,
+         "z": 1,
+         "fit": "main",
+         "objects": {
+            "main": {
+               "file": "animated/stress.anim",
+               "x": 0,
+               "y": 0
+            }
+         },
+         "frames": 64,
+         "oninit": ["main"],
+         "preRender": {
+            "0": true,
+            "16": true,
+            "32": true,
+            "48": true
+         }
+      }
+   ],
+   "frames": 1
+}
