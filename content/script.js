@@ -43,19 +43,40 @@ fns.lm = fns.loadMusic = async function(name, src) {
    smp.setAttribute("src", cServer + "/" + src);
    music[name] = smp;
 }
-fns.cc = fns.createCanvas = async function(name, z) {
+fns.cc = fns.createCanvas = async function(name, z, x, y, w, h, hid) {
    if (canvases[name]) {
       canvases[name].c.parentNode.removeChild(canvases[name].c);
       delete canvases[name];
    }
    var c = document.createElement("canvas");
    canvases[name] = { c: c, ctx: c.getContext("2d") };
-   c.setAttribute("width", "512");
-   c.setAttribute("height", "512");
+   if (x !== undefined) {
+      c.style.left = x + "px";
+   }
+   if (y !== undefined) {
+      c.style.top = y + "px";
+   }
+   if (w === undefined) {
+      w = 512;
+   }
+   if (h === undefined) {
+      h = 512;
+   }
+   c.setAttribute("width", w.toString());
+   c.setAttribute("height", h.toString());
+   if (hid === true) {
+      c.style.display = "none";
+   }
    document.getElementById("viewport").appendChild(c);
    if (z !== undefined) {
       c.style.zIndex = z;
    }
+}
+fns.hic = fns.hideCanvas = async function(name) {
+   canvases[name].c.style.display = "none";
+}
+fns.shc = fns.showCanvas = async function(name) {
+   canvases[name].c.style.display = "block";
 }
 fns.dc = fns.deleteCanvas = async function(name) {
    canvases[name].c.parentNode.removeChild(canvases[name].c);

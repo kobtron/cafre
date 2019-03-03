@@ -40,7 +40,7 @@ module.exports = function(path) {
       }
    }
    var anim = {
-      "w": tbc.length * 16,
+      "w": (tbc.length * 16) + (tbc.length - 1),
       "h": 16,
       "objects": {
       },

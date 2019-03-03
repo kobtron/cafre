@@ -228,9 +228,26 @@ function loadAnimationClassByDef(def, is) {
          frames: def.frames,
          w: def.w,
          h: def.h,
-         layers: def.layers
+         layers: def.layers,
+         isLayer: def.isLayer,
+         layerNumber: def.layerNumber,
+         preRender: def.preRender,
+         staticPreRender: def.staticPreRender
       };
-      if (def.objects || def.layers) {
+      if (def.layers) {
+         for (var i = 0; i < def.layers.length; ++i) {
+            var l = def.layers[i];
+            l.isLayer = true;
+            l.layerNumber = i;
+            if (l.fit) {
+               var ff = l.objects[l.fit].file;
+               var c = loadAnimationClass(path, ff, is);
+               l.w = c.definition.w;
+               l.h = c.definition.h;
+            }
+         }
+      }
+      if (def.objects || def.layers || def.preRender) {
          config.oninit = function(obj) {
             if (def.objects) {
                for (var p in def.objects) {
@@ -266,6 +283,16 @@ function loadAnimationClassByDef(def, is) {
                   obj.dList[name] = obj.objects[name];
                }
             }
+            if (def.preRender) {
+               for (var p in def.preRender) {
+                  if (def.preRender.hasOwnProperty(p)) {
+                     is.push(["sc", ["layer-" + obj.layerNumber + "-" + p]]);
+                     obj.sendFrame(parseInt(p));
+                     obj.drawObjects(is, 0, 0);
+                  }
+               }
+               obj.sendFrame(0);
+            }
          }
       }
       if (def.animation) {
@@ -283,6 +310,22 @@ function loadAnimationClassByDef(def, is) {
                })(d);
             }
          }
+      }
+      if (def.preRender && !def.staticPreRender) {
+         config.onframes = {};
+         for (var p in def.preRender) {
+            if (def.preRender.hasOwnProperty(p)) {
+               config.onframes[p] = (function(p) {
+                  return function(obj, instructions) {
+                     if (obj.shownCel) {
+                        instructions.push(["hic", [obj.shownCel]]);
+                     }
+                     obj.shownCel = "layer-" + obj.layerNumber + "-" + p;
+                     instructions.push(["shc", [obj.shownCel]]);
+                  }
+               })(p);
+            }
+         }         
       }
       var animClass = new anim.AnimationClass(config);
       return animClass;
@@ -341,26 +384,34 @@ function createFileElement(is, root, name, path) {
       textureClasses = {};
       spriteClasses = {};
       animationClasses = {};
+      cClass = undefined;
+      cObj = undefined;
+      lCObj = false;
       if (this.fileName.endsWith(".tex")) {
          cClass = loadTextureClass(path, this.fileName);
+         cClass.load(is);
          cObj = new anim.TextureObject(cClass, 0, 0);
          lCObj = true;
       } else if (this.fileName.endsWith(".sprt")) {
          cClass = loadSpriteClass(path, this.fileName);
+         cClass.load(is);
          cObj = new anim.SpriteObject(cClass, 0, 0);
          lCObj = true;         
       } else if (this.fileName.endsWith(".anim")) {
          cClass = loadAnimationClass(path, this.fileName, is);
+         cClass.load(is);
          cObj = new anim.AnimationObject(cClass, 0, 0);
          lCObj = true;         
       } else if (this.fileName.endsWith(".js")) {
          require(path + "/" + this.fileName.substring(0, this.fileName.length - 3))(path);
       } else if (this.fileName.endsWith(".tb")) {
          cClass = loadAnimationClass(path, this.fileName, is);
+         cClass.load(is);
          cObj = new anim.AnimationObject(cClass, 0, 0);
          lCObj = true;         
       } else if (this.fileName.endsWith(".map")) {
          cClass = loadAnimationClass(path, this.fileName, is);
+         cClass.load(is);
          cObj = new anim.AnimationObject(cClass, 0, 0);
          cObj.isMap = true;
          cObj.onmousedown = function(e) {
@@ -394,10 +445,6 @@ function createFileElement(is, root, name, path) {
          };
          cObj.canvas = "main";
          lCObj = true;         
-      } else {
-         cClass = undefined;
-         cObj = undefined;
-         lCObj = false;
       }
    });
 }
@@ -476,7 +523,7 @@ canvases["main"] = { c: c, ctx: ctx };
       }*/
    }
    if (lCObj) {
-      cClass.load(instructions);
+      //cClass.load(instructions);
       lCObj = false;
    }
    if (cObj) {

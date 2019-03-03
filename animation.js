@@ -103,7 +103,15 @@ class AnimationClass {
       if (this.definition.layers) {
          for (var i = 0; i < this.definition.layers.length; ++i) {
             var l = this.definition.layers[i];
-            instructions.push(["cc", ["layer-" + i]]);
+            if (!l.preRender) {
+               instructions.push(["cc", ["layer-" + i, l.z, l.x, l.y, l.w, l.h]]);
+            } else {
+               for (var p in l.preRender) {
+                  if (l.preRender.hasOwnProperty(p)) {
+                     instructions.push(["cc", ["layer-" + i + "-" + p, l.z, l.x, l.y, l.w, l.h, !l.staticPreRender]]);               
+                  }
+               }
+            }
          }
       }
    }
@@ -111,7 +119,15 @@ class AnimationClass {
       if (this.definition.layers) {
          for (var i = 0; i < this.definition.layers.length; ++i) {
             var l = this.definition.layers[i];
-            instructions.push(["dc", ["layer-" + i]]);
+            if (!l.preRender) {
+               instructions.push(["dc", ["layer-" + i]]);
+            } else {
+               for (var p in l.preRender) {
+                  if (l.preRender.hasOwnProperty(p)) {
+                     instructions.push(["dc", ["layer-" + i + "-" + p]]);
+                  }
+               }
+            }
          }
       }
    }
@@ -125,9 +141,34 @@ class AnimationObject {
       this.objects = {};
       this.frames = aClass.definition.frames;
       this.frame = 0;
+      this.isLayer = aClass.definition.isLayer;
+      this.layerNumber = aClass.definition.layerNumber;
+      this.preRender = aClass.definition.preRender;
+      this.staticPreRender = aClass.definition.staticPreRender;
       this.dList = {};
       if (aClass.definition.oninit) {
          aClass.definition.oninit(this);
+      }
+   }
+   
+   drawObjects(instructions, dx, dy) {
+      for (var p in this.dList) {
+         if (this.dList.hasOwnProperty(p)) {
+            this.dList[p].draw(instructions, dx, dy);
+         }
+      }
+      if (this.selected) {
+         var sx;
+         var sy;
+         if (!this.aClass.definition.isLayer) {
+            sx = this.x;
+            sy = this.y;
+         } else {
+            sx = 0;
+            sy = 0;
+         }
+         instructions.push(["ss", ["#0000FF"]]);
+         instructions.push(["sr", [sx + 0.5, sy + 0.5, this.aClass.definition.w - 1, this.aClass.definition.h - 1]]);
       }
    }
    
@@ -135,25 +176,28 @@ class AnimationObject {
       var onframes = this.aClass.definition.onframes;
       if (onframes) {
          if (onframes.hasOwnProperty(this.frame)) {
-            onframes[this.frame](this);
+            onframes[this.frame](this, instructions);
          }
       }
-      if (this.canvas) {
-         instructions.push(["sc", [this.canvas]]);
-      }
-      for (var p in this.dList) {
-         if (this.dList.hasOwnProperty(p)) {
-            this.dList[p].draw(instructions, x + this.x, y + this.y);
+      if (!this.preRender) {
+         if (this.canvas) {
+            instructions.push(["sc", [this.canvas]]);
          }
-      }
-      if (this.selected) {
-         instructions.push(["ss", ["#0000FF"]]);
-         instructions.push(["sr", [this.x + 0.5, this.y + 0.5, this.aClass.definition.w - 1, this.aClass.definition.h - 1]]);
-      }
-      if (this.layers) {
-         for (var i = 0; i < this.layers.length; ++i) {
-            var l = this.layers[i];
-            l.draw(instructions, x + this.x, y + this.y);
+         var dx;
+         var dy;
+         if (!this.aClass.definition.isLayer) {
+            dx = x + this.x;
+            dy = y + this.y;
+         } else {
+            dx = 0;
+            dy = 0;
+         }
+         this.drawObjects(instructions, dx, dy);
+         if (this.layers) {
+            for (var i = 0; i < this.layers.length; ++i) {
+               var l = this.layers[i];
+               l.draw(instructions, dx, dy);
+            }
          }
       }
       this.frame += 1;
@@ -163,21 +207,32 @@ class AnimationObject {
    }
    
    clear(instructions, x, y) {
-      if (this.canvas) {
-         instructions.push(["sc", [this.canvas]]);
-      }
-      for (var p in this.dList) {
-         if (this.dList.hasOwnProperty(p)) {
-            this.dList[p].clear(instructions, x + this.x, y + this.y);
+      if (!this.preRender) {
+         if (this.canvas) {
+            instructions.push(["sc", [this.canvas]]);
          }
-      }      
-      if (this.selected) {
-         instructions.push(getClearRectInst(x + this.x, y + this.y, this.aClass.definition.w, this.aClass.definition.h));         
-      }
-      if (this.layers) {
-         for (var i = 0; i < this.layers.length; ++i) {
-            var l = this.layers[i];
-            l.clear(instructions, x + this.x, y + this.y);
+         var dx;
+         var dy;
+         if (!this.aClass.definition.isLayer) {
+            dx = x + this.x;
+            dy = y + this.y;
+         } else {
+            dx = 0;
+            dy = 0;
+         }
+         for (var p in this.dList) {
+            if (this.dList.hasOwnProperty(p)) {
+               this.dList[p].clear(instructions, dx, dy);
+            }
+         }      
+         if (this.selected) {
+            instructions.push(getClearRectInst(dx, dy, this.aClass.definition.w, this.aClass.definition.h));         
+         }
+         if (this.layers) {
+            for (var i = 0; i < this.layers.length; ++i) {
+               var l = this.layers[i];
+               l.clear(instructions, dx, dy);
+            }
          }
       }
    }
@@ -195,6 +250,20 @@ class AnimationObject {
    mouseup(e) {
       if (this.onmouseup) {
          this.onmouseup.call(this, e);
+      }
+   }
+   
+   sendFrame(f) {
+      this.frame = f % this.frames;
+      if (this.dList) {
+         for (var p in this.dList) {
+            if (this.dList.hasOwnProperty(p)) {
+               var o = this.dList[p];
+               if (o.sendFrame) {
+                  o.sendFrame(f);
+               }
+            }
+         }
       }
    }
 }

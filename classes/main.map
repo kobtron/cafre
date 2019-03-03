@@ -9,10 +9,10 @@
    "layers": [
       {
          "name": "toolbox",
-         "x": 0,
-         "y": 0,
-         "w": 64,
-         "h": 64,
+         "x": 16,
+         "y": 16,
+         "z": 1,
+         "fit": "toolbox",
          "objects": {
             "toolbox": {
                "file": "animated.tb",
@@ -20,8 +20,33 @@
                "y": 0
             }
          },
+         "frames": 64,
+         "oninit": ["toolbox"],
+         "preRender": {
+            "0": true,
+            "16": true,
+            "32": true,
+            "48": true
+         }
+      }, {
+         "name": "toolbox2",
+         "x": 16,
+         "y": 32,
+         "z": 1,
+         "fit": "toolbox",
+         "objects": {
+            "toolbox": {
+               "file": "ground.tb",
+               "x": 0,
+               "y": 0
+            }
+         },
          "frames": 1,
-         "oninit": ["toolbox"]
+         "oninit": ["toolbox"],
+         "preRender": {
+            "0": true
+         },
+         "staticPreRender": true
       }
    ],
    "frames": 1,
