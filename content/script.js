@@ -44,6 +44,10 @@ fns.lm = fns.loadMusic = async function(name, src) {
    music[name] = smp;
 }
 fns.cc = fns.createCanvas = async function(name, z) {
+   if (canvases[name]) {
+      canvases[name].c.parentNode.removeChild(canvases[name].c);
+      delete canvases[name];
+   }
    var c = document.createElement("canvas");
    canvases[name] = { c: c, ctx: c.getContext("2d") };
    c.setAttribute("width", "512");
@@ -52,6 +56,10 @@ fns.cc = fns.createCanvas = async function(name, z) {
    if (z !== undefined) {
       c.style.zIndex = z;
    }
+}
+fns.dc = fns.deleteCanvas = async function(name) {
+   canvases[name].c.parentNode.removeChild(canvases[name].c);
+   delete canvases[name];
 }
 fns.sc = fns.selectCanvas = async function(args) {
    var cv = canvases[args];

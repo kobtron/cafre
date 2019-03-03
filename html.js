@@ -81,7 +81,7 @@ class HtmlElement {
       instructions.push(["e", [`
 var node = nodes[` + id + `];
 node.addEventListener(` + je + `, function(e) {
-   events.push(["ev", ` + je + `, ` + id + `, e.keyCode, e.x, e.y]);
+   events.push(["ev", ` + je + `, ` + id + `, {keyCode:e.keyCode,offsetX:e.offsetX,offsetY:e.offsetY,button:e.button}]);
 });`]]);
       if (!this.eventListeners[e]) {
          this.eventListeners[e] = [];

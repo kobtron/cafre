@@ -191,41 +191,72 @@ var cObj = undefined;
 var cClass = undefined;
 var lCObj = false;
 
+var textureClasses = {};
+var spriteClasses = {};
+var animationClasses = {};
+
 function loadTextureClass(path, fileName) {
-   var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
-   var td = JSON.parse(contents);
-   var tc = new anim.TextureClass(td.name, td.src);
+   var tc;
+   if (!textureClasses.hasOwnProperty(fileName)) {
+      var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
+      var td = JSON.parse(contents);
+      tc = new anim.TextureClass(td.name, td.src);
+      textureClasses[fileName] = tc;
+   } else {
+      tc = textureClasses[fileName];
+   }
    return tc;
 }
 
 function loadSpriteClass(path, fileName) {
-   var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
-   var def = JSON.parse(contents);
-   var tc = loadTextureClass(path, def.texture);
-   return new anim.SpriteClass(tc, def.x, def.y, def.w, def.h);
+   var sc;
+   if (!spriteClasses.hasOwnProperty(fileName)) {
+      var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
+      var def = JSON.parse(contents);
+      var tc = loadTextureClass(path, def.texture);
+      sc = new anim.SpriteClass(tc, def.x, def.y, def.w, def.h);
+      spriteClasses[fileName] = sc;
+   } else {
+      sc = spriteClasses[fileName];
+   }
+   return sc;
 }
 
-function loadAnimationClass(path, fileName, is) {
-   var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
-   var def = JSON.parse(contents);
-   return (function(def) {
+function loadAnimationClassByDef(def, is) {
+   var ac = (function(def) {
       var config = {
-         frames: def.frames
+         frames: def.frames,
+         w: def.w,
+         h: def.h,
+         layers: def.layers
       };
-      if (def.objects) {
+      if (def.objects || def.layers) {
          config.oninit = function(obj) {
-            for (var p in def.objects) {
-               if (def.objects.hasOwnProperty(p)) {
-                  var oDef = def.objects[p];
-                  if (oDef.file.endsWith(".sprt")) {
-                     var c = loadSpriteClass(path, oDef.file);
-                     c.load(is);
-                     obj.objects[p] = new anim.SpriteObject(c, oDef.x, oDef.y);
-                  } else if (oDef.file.endsWith(".anim")) {
-                     var c = loadAnimationClass(path, oDef.file, is);
-                     c.load(is);
-                     obj.objects[p] = new anim.AnimationObject(c, oDef.x, oDef.y);
+            if (def.objects) {
+               for (var p in def.objects) {
+                  if (def.objects.hasOwnProperty(p)) {
+                     var oDef = def.objects[p];
+                     if (oDef.file.endsWith(".sprt")) {
+                        var c = loadSpriteClass(path, oDef.file);
+                        c.load(is);
+                        obj.objects[p] = new anim.SpriteObject(c, oDef.x, oDef.y);
+                     } else if (oDef.file.endsWith(".anim") || oDef.file.endsWith(".tb")) {
+                        var c = loadAnimationClass(path, oDef.file, is);
+                        c.load(is);
+                        obj.objects[p] = new anim.AnimationObject(c, oDef.x, oDef.y);
+                     }
                   }
+               }
+            }
+            if (def.layers) {
+               obj.layers = [];
+               for (var i = 0; i < def.layers.length; ++i) {
+                  var l = def.layers[i];
+                  var c = loadAnimationClassByDef(l, is);
+                  c.load(is);
+                  var o = new anim.AnimationObject(c, l.x, l.y);
+                  o.canvas = "layer-" + i;
+                  obj.layers.push(o);
                }
             }
             if (def.oninit) {
@@ -256,6 +287,20 @@ function loadAnimationClass(path, fileName, is) {
       var animClass = new anim.AnimationClass(config);
       return animClass;
    })(def);
+   return ac;
+}
+
+function loadAnimationClass(path, fileName, is) {
+   var ac;
+   if (!animationClasses.hasOwnProperty(fileName)) {
+      var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
+      var def = JSON.parse(contents);
+      ac = loadAnimationClassByDef(def, is);
+      animationClasses[fileName] = ac;
+   } else {
+      ac = animationClasses[fileName];
+   }
+   return ac;
 }
 
 function createFileElement(is, root, name, path) {
@@ -283,6 +328,9 @@ function createFileElement(is, root, name, path) {
    span.setInnerHtml(is, caret + " " + name);
    li.fileName = name;
    li.addEventListener(is, "click", function(e, is) {
+      if (cClass) {
+         cClass.unload(is);
+      }
       if (selected) {
          selected.removeClass(is, "selected");
       }
@@ -290,6 +338,9 @@ function createFileElement(is, root, name, path) {
       selected = this;
       is.push(["sc", ["main"]]);
       is.push(["cr", [0, 0, 512, 512]]);
+      textureClasses = {};
+      spriteClasses = {};
+      animationClasses = {};
       if (this.fileName.endsWith(".tex")) {
          cClass = loadTextureClass(path, this.fileName);
          cObj = new anim.TextureObject(cClass, 0, 0);
@@ -305,27 +356,44 @@ function createFileElement(is, root, name, path) {
       } else if (this.fileName.endsWith(".js")) {
          require(path + "/" + this.fileName.substring(0, this.fileName.length - 3))(path);
       } else if (this.fileName.endsWith(".tb")) {
-         var contents = fs.readFileSync(path + "/" + this.fileName, 'utf8');
-         var def = JSON.parse(contents);
-         var config = {
-            frames: 1
-         };
-         var line = def[0];
-         config.oninit = function(obj) {
-            obj.dList = {};
-            for (var i = 0; i < line.length; ++i) {
-               var cf = line[i];
-               var c = loadAnimationClass(path, cf, is);
-               c.load(is);
-               var name = "0," + i.toString();
-               obj.objects[name] = new anim.AnimationObject(c, 16 * i + (1 * i), 0);
-               obj.dList[name] = obj.objects[name];
-            }
-         }
-         var animClass = new anim.AnimationClass(config);
-         cClass = animClass;
+         cClass = loadAnimationClass(path, this.fileName, is);
          cObj = new anim.AnimationObject(cClass, 0, 0);
-         lCObj = false;         
+         lCObj = true;         
+      } else if (this.fileName.endsWith(".map")) {
+         cClass = loadAnimationClass(path, this.fileName, is);
+         cObj = new anim.AnimationObject(cClass, 0, 0);
+         cObj.isMap = true;
+         cObj.onmousedown = function(e) {
+            if (e[3].button == 0) {
+               for (var p in this.dList) {
+                  if (this.dList.hasOwnProperty(p)) {
+                     var o = this.dList[p];
+                     o.selected = true;
+                     this.sObj = o;
+                     this.lCX = e[3].offsetX;
+                     this.lCY = e[3].offsetY;
+                     break;
+                  }
+               }
+            }
+         };
+         cObj.onmousemove = function(e) {
+            if (this.sObj) {
+               var x = e[3].offsetX;
+               var y = e[3].offsetY;
+               this.sObj.x += x - this.lCX;
+               this.sObj.y += y - this.lCY;
+               this.lCX = x;
+               this.lCY = y;
+            }
+         };
+         cObj.onmouseup = function(e) {
+            if (this.sObj) {
+               this.sObj = null;
+            }
+         };
+         cObj.canvas = "main";
+         lCObj = true;         
       } else {
          cClass = undefined;
          cObj = undefined;
@@ -333,6 +401,8 @@ function createFileElement(is, root, name, path) {
       }
    });
 }
+
+var clickEvent;
 
 exports.update = async function(events) {
    var instructions = [];
@@ -347,6 +417,9 @@ exports.update = async function(events) {
    html.handleEvents(events, instructions);
    
    if (load) {
+      textureClasses = {};
+      spriteClasses = {};
+      animationClasses = {};
       var is = instructions;
       filebrowser.load(is);
       viewport.load(is);
@@ -370,6 +443,15 @@ canvases["main"] = { c: c, ctx: ctx };
       selected = undefined;
       cClass = undefined;
       cObj = undefined;
+      viewport.addEventListener(is, "mousedown", function(e, is) {
+         clickEvent = ["mousedown", e];
+      });
+      viewport.addEventListener(is, "mousemove", function(e, is) {
+         clickEvent = ["mousemove", e];
+      });
+      viewport.addEventListener(is, "mouseup", function(e, is) {
+         clickEvent = ["mouseup", e];
+      });
       /*instructions.push.apply(instructions, [
          ["lt", ["car", "tex/car.png"]],
          ["lt", ["ft", "tex/fantasy-tileset.png"]],
@@ -399,7 +481,13 @@ canvases["main"] = { c: c, ctx: ctx };
    }
    if (cObj) {
       cObj.clear(instructions, 0, 0);
+      if (cObj.isMap && clickEvent) {
+         cObj[clickEvent[0]](clickEvent[1]);
+      }
       cObj.draw(instructions, 0, 0);
+   }
+   if (clickEvent) {
+      clickEvent = null;
    }
 
    /*instructions.push(["sc", ["main"]]);

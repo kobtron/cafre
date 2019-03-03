@@ -15,6 +15,8 @@ class TextureClass {
    load(instructions) {
       instructions.push(["lt", [this.name, this.src]]);
    }
+   unload(instructions) {
+   }
    
    draw(instructions, x, y) {
       instructions.push(["d", [this.name, x, y]]);
@@ -68,6 +70,8 @@ class SpriteClass {
    load(instructions) {
       this.txtClass.load(instructions);
    }
+   unload(instructions) {
+   }
 }
 
 class SpriteObject {
@@ -96,6 +100,20 @@ class AnimationClass {
    }
    
    load(instructions) {
+      if (this.definition.layers) {
+         for (var i = 0; i < this.definition.layers.length; ++i) {
+            var l = this.definition.layers[i];
+            instructions.push(["cc", ["layer-" + i]]);
+         }
+      }
+   }
+   unload(instructions) {
+      if (this.definition.layers) {
+         for (var i = 0; i < this.definition.layers.length; ++i) {
+            var l = this.definition.layers[i];
+            instructions.push(["dc", ["layer-" + i]]);
+         }
+      }
    }
 }
 
@@ -120,9 +138,22 @@ class AnimationObject {
             onframes[this.frame](this);
          }
       }
+      if (this.canvas) {
+         instructions.push(["sc", [this.canvas]]);
+      }
       for (var p in this.dList) {
          if (this.dList.hasOwnProperty(p)) {
             this.dList[p].draw(instructions, x + this.x, y + this.y);
+         }
+      }
+      if (this.selected) {
+         instructions.push(["ss", ["#0000FF"]]);
+         instructions.push(["sr", [this.x + 0.5, this.y + 0.5, this.aClass.definition.w - 1, this.aClass.definition.h - 1]]);
+      }
+      if (this.layers) {
+         for (var i = 0; i < this.layers.length; ++i) {
+            var l = this.layers[i];
+            l.draw(instructions, x + this.x, y + this.y);
          }
       }
       this.frame += 1;
@@ -132,11 +163,39 @@ class AnimationObject {
    }
    
    clear(instructions, x, y) {
+      if (this.canvas) {
+         instructions.push(["sc", [this.canvas]]);
+      }
       for (var p in this.dList) {
          if (this.dList.hasOwnProperty(p)) {
             this.dList[p].clear(instructions, x + this.x, y + this.y);
          }
       }      
+      if (this.selected) {
+         instructions.push(getClearRectInst(x + this.x, y + this.y, this.aClass.definition.w, this.aClass.definition.h));         
+      }
+      if (this.layers) {
+         for (var i = 0; i < this.layers.length; ++i) {
+            var l = this.layers[i];
+            l.clear(instructions, x + this.x, y + this.y);
+         }
+      }
+   }
+   
+   mousedown(e) {
+      if (this.onmousedown) {
+         this.onmousedown.call(this, e);
+      }
+   }
+   mousemove(e) {
+      if (this.onmousemove) {
+         this.onmousemove.call(this, e);
+      }
+   }
+   mouseup(e) {
+      if (this.onmouseup) {
+         this.onmouseup.call(this, e);
+      }
    }
 }
 

@@ -11,7 +11,6 @@ module.exports = function(path) {
    var w = 16;
    var h = 16;
    var tbc = []
-   var tb = [tbc];
    for (var j = 0; j < 3; ++j) {
       for (var i = 0; i < 3; ++i) {
          var file = {
@@ -40,5 +39,21 @@ module.exports = function(path) {
          tbc.push(animFn);
       }
    }
-   fs.writeFileSync(path + "/ground.tb", JSON.stringify(tb));
+   var anim = {
+      "w": tbc.length * 16,
+      "h": 16,
+      "objects": {
+      },
+      "frames": 1,
+      "oninit": []
+   };
+   for (var i = 0; i < tbc.length; ++i) {
+      anim.objects["tool-" + i] = {
+         "file": tbc[i],
+         "x": i * 16 + (i * 1),
+         "y": 0
+      };
+      anim.oninit.push("tool-" + i);
+   }
+   fs.writeFileSync(path + "/ground.tb", JSON.stringify(anim));
 };

@@ -1,0 +1,29 @@
+{
+   "objects": {
+      "mario": {
+         "file": "mario.anim",
+         "x": 0,
+         "y": 0
+      }
+   },
+   "layers": [
+      {
+         "name": "toolbox",
+         "x": 0,
+         "y": 0,
+         "w": 64,
+         "h": 64,
+         "objects": {
+            "toolbox": {
+               "file": "animated.tb",
+               "x": 0,
+               "y": 0
+            }
+         },
+         "frames": 1,
+         "oninit": ["toolbox"]
+      }
+   ],
+   "frames": 1,
+   "oninit": ["mario"]
+}
