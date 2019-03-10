@@ -148,6 +148,12 @@ class AnimationObject {
       if (aClass.definition.oninit) {
          aClass.definition.oninit(this);
       }
+      if (aClass.definition.behaviour) {
+         this.behaviour = aClass.definition.behaviour;
+         this.update = function(events, instructions) {
+            this.behaviour.call(this, events, instructions);
+         }
+      }
    }
    
    drawObjects(instructions, dx, dy) {

@@ -224,7 +224,7 @@ function loadSpriteClass(path, fileName, is) {
    return sc;
 }
 
-function loadAnimationClassByDef(def, is) {
+function loadAnimationClassByDef(path, def, is) {
    var ac = (function(def) {
       var config = {
          frames: def.frames,
@@ -269,7 +269,7 @@ function loadAnimationClassByDef(def, is) {
                obj.layers = [];
                for (var i = 0; i < def.layers.length; ++i) {
                   var l = def.layers[i];
-                  var c = loadAnimationClassByDef(l, is);
+                  var c = loadAnimationClassByDef(path, l, is);
                   c.load(is);
                   var o = new anim.AnimationObject(c, l.x, l.y);
                   o.canvas = "layer-" + i;
@@ -327,6 +327,9 @@ function loadAnimationClassByDef(def, is) {
             }
          }         
       }
+      if (def.behaviour) {
+         config.behaviour = require(path + "/" + def.behaviour);
+      }
       var animClass = new anim.AnimationClass(config);
       return animClass;
    })(def);
@@ -338,7 +341,7 @@ function loadAnimationClass(path, fileName, is) {
    if (!animationClasses.hasOwnProperty(fileName)) {
       var contents = fs.readFileSync(path + "/" + fileName, 'utf8');
       var def = JSON.parse(contents);
-      ac = loadAnimationClassByDef(def, is);
+      ac = loadAnimationClassByDef(path, def, is);
       ac.load(is);
       animationClasses[fileName] = ac;
    } else {
@@ -361,7 +364,7 @@ function createFileElement(is, root, name, path) {
       caret = "&#x1F4C1;";
    } else if (name.endsWith(".ogg") || name.endsWith(".mp3")) {
       caret = "&#x1F509;";
-   } else if (name.endsWith(".png")) {
+   } else if (name.endsWith(".png") || name.endsWith(".svg")) {
       caret = "&#x1F4F7;";
    } else if (name.endsWith(".js")) {
       caret = "&#x1F4BB;";
@@ -409,7 +412,7 @@ function createFileElement(is, root, name, path) {
       } else if (this.fileName.endsWith(".map")) {
          cClass = loadAnimationClass(path, this.fileName, is);
          cObj = new anim.AnimationObject(cClass, 0, 0);
-         cObj.isMap = true;
+         /*cObj.isMap = true;
          cObj.onmousedown = function(e) {
             if (e[3].button == 0) {
                for (var p in this.dList) {
@@ -439,7 +442,7 @@ function createFileElement(is, root, name, path) {
                this.sObj = null;
             }
          };
-         cObj.canvas = "main";
+         cObj.canvas = "main";*/
          lCObj = true;         
       }
    });
@@ -523,6 +526,9 @@ canvases["main"] = { c: c, ctx: ctx };
    }
    if (cObj) {
       cObj.clear(instructions, 0, 0);
+      if (cObj.update) {
+         cObj.update(events, instructions);
+      }
       if (cObj.isMap && clickEvent) {
          cObj[clickEvent[0]](clickEvent[1]);
       }
