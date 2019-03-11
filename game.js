@@ -260,7 +260,15 @@ function loadAnimationClassByDef(path, def, is) {
                         obj.objects[p] = new anim.SpriteObject(c, oDef.x, oDef.y);
                      } else if (oDef.file.endsWith(".anim") || oDef.file.endsWith(".tb")) {
                         var c = loadAnimationClass(path, oDef.file, is);
-                        obj.objects[p] = new anim.AnimationObject(c, oDef.x, oDef.y);
+                        var ao = new anim.AnimationObject(c, oDef.x, oDef.y);
+                        obj.objects[p] = ao;
+                        if (oDef.mapTag && obj.map) {
+                           if (!obj.map.tags) {
+                              obj.map.tags = {};
+                           }
+                           obj.map.tags[oDef.mapTag] = ao;
+                           ao.mapTag = oDef.mapTag;
+                        }
                      }
                   }
                }
@@ -271,7 +279,7 @@ function loadAnimationClassByDef(path, def, is) {
                   var l = def.layers[i];
                   var c = loadAnimationClassByDef(path, l, is);
                   c.load(is);
-                  var o = new anim.AnimationObject(c, l.x, l.y);
+                  var o = new anim.AnimationObject(c, l.x, l.y, obj);
                   o.canvas = "layer-" + i;
                   obj.layers.push(o);
                }
@@ -328,7 +336,7 @@ function loadAnimationClassByDef(path, def, is) {
          }         
       }
       if (def.behaviour) {
-         config.behaviour = require(path + "/" + def.behaviour);
+         config.behaviour = require(path + "/" + def.behaviour)();
       }
       var animClass = new anim.AnimationClass(config);
       return animClass;

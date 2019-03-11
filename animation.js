@@ -133,7 +133,7 @@ class AnimationClass {
 }
 
 class AnimationObject {
-   constructor(aClass, x, y) {
+   constructor(aClass, x, y, map) {
       this.aClass = aClass;
       this.x = x;
       this.y = y;
@@ -145,6 +145,9 @@ class AnimationObject {
       this.preRender = aClass.definition.preRender;
       this.staticPreRender = aClass.definition.staticPreRender;
       this.dList = {};
+      if (map) {
+         this.map = map;
+      }
       if (aClass.definition.oninit) {
          aClass.definition.oninit(this);
       }

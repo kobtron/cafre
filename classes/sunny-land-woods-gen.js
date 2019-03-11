@@ -242,7 +242,8 @@ module.exports = function(path) {
                "player": {
                   "file": "sunny-land-woods/player.anim",
                   "x": 16 - (90 / 2),
-                  "y": 14 * 32 - 16
+                  "y": 14 * 32 - 16,
+                  "mapTag": "player"
                }
             },
             "frames": 1,
